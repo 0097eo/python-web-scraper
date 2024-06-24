@@ -72,3 +72,74 @@ class BookscraperPipeline:
 
 
         return item
+    
+
+import psycopg2
+
+class SaveToPosgreSQLPipeline:
+    def __init__(self):
+        self.conn = None
+        self.cur = None
+
+    def open_spider(self, spider):
+        db_name = "scrapy"
+        db_user = "postgres"
+        db_password = "kothbiro"
+        db_host = "localhost"
+        db_port = "5432"
+
+        create_table_sql = '''
+        CREATE TABLE IF NOT EXISTS books_data (
+        id SERIAL PRIMARY KEY,
+        url VARCHAR(255),
+        title TEXT,
+        upc VARCHAR(12),
+        product_type TEXT,
+        price_excl_tax NUMERIC,
+        price_incl_tax NUMERIC,
+        tax NUMERIC,
+        availability INTEGER,
+        num_reviews INTEGER,
+        stars INTEGER,
+        category TEXT,
+        description TEXT,
+        price NUMERIC
+        );
+        '''
+
+        try:
+            self.conn = psycopg2.connect(dbname=db_name, user=db_user, password=db_password, host=db_host, port=db_port)
+            self.cur = self.conn.cursor()
+            self.cur.execute(create_table_sql)
+            self.conn.commit()
+            print("Table created successfully.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+    def process_item(self, item, spider):
+        try:
+            self.cur.execute(""" 
+            INSERT INTO books_data (
+                url, title, upc, product_type, price_excl_tax,
+                price_incl_tax, tax, price, availability,
+                num_reviews, stars, category, description
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            )
+            """, (
+                item["url"], item["title"], item["upc"], item["product_type"],
+                item["price_excl_tax"], item["price_incl_tax"], item["tax"],
+                item["price"], item["availability"], item["num_reviews"],
+                item["stars"], item["category"], str(item["description"][0])
+            ))
+            self.conn.commit()
+        except Exception as e:
+            print(f"Error inserting item: {e}")
+        return item
+
+    def close_spider(self, spider):
+        if self.cur:
+            self.cur.close()
+        if self.conn:
+            self.conn.close()
+

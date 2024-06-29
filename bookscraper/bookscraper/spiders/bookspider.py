@@ -1,5 +1,6 @@
 import scrapy
 from bookscraper.items import BookItem  
+import random
 
 class BookspiderSpider(scrapy.Spider):
     name = 'bookspider'
@@ -7,14 +8,17 @@ class BookspiderSpider(scrapy.Spider):
     start_urls = ['https://books.toscrape.com/']
 
     custom_settings = {
-    'FEEDS': {
+        'FEEDS': {
+            'booksdata.json': {'format': 'json', 'overwrite': True},
+        }
+    }
 
-    'booksdata.json': {'format': 'json'}
-    }
-    }
+
 
     def parse(self, response):
+        
         books = response.css('article.product_pod')
+
         for book in books:
             relative_url = book.css('h3 a ::attr(href)').get()
 
@@ -54,3 +58,5 @@ class BookspiderSpider(scrapy.Spider):
         book_item['price'] = response.css('p.price_color ::text').get(),
     
         yield book_item
+
+
